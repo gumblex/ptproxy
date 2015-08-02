@@ -2,6 +2,8 @@
 
 Turn any pluggable transport for Tor into a secure port-forwarding proxy.
 
+This script is compatible with PT protocol version 1 without Extended ORPort and is independent from Tor.
+
 It's only a bash script `ptproxy.sh`.
 
 ## Usage
