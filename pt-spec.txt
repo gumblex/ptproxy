@@ -1,0 +1,494 @@
+                           Tor Pluggable Transport Specification
+
+                                     The Tor PT team
+
+A Table of Contents:
+
+  0. Motivation
+  1. Tor PT interface overview
+  2. Specification
+  2.0. Pluggable Transport names
+  2.1. Tor Configuration
+  2.1.0. Client Configuration
+  2.1.0.0. ClientTransportPlugin torrc lines
+  2.1.0.1. Bridge torrc lines
+  2.1.0.2. Connecting to a bridge via a client PT proxy
+  2.1.0.3. Passing PT-specific parameters to a client PT
+  2.1.1. Server (bridge) Configuration
+  2.1.1.0. ServerTransportPlugin lines
+  2.1.1.1. Passing PT-specific parameters to a server PT
+  2.1.1.2. Specify the bind address of a server PT
+  2.2. Managed proxy interface
+  2.2.0. Tor -> PT communication (environment variables)
+  2.2.1. PT -> Tor communication (stdout)
+  2.2.1.0. Client PT behaviour (CMETHOD lines)
+  2.2.1.1. Server PT behaviour (SMETHOD lines)
+  2.2.2. Managed proxy protocol behaviour
+
+                                                             +---- Extended ORPort
+                                                             |        connection
+                                                             v
+                  +-----------+            +------------+
+  SOCKS ->  +-----| PT client |------------| PT server  |----+
+connection  |     +-----------+    ^       +------------+    |
+            |                      |                         |
+      +------------+            Obfuscated            +--------------+
+      | Tor Client |             traffic              |  Tor Bridge  |
+      +------------+                                  +--------------+
+
+
+
+0. Motivation
+
+  This specification describes how Tor uses Pluggable Transports (PTs).
+  This document is different from pt-spec.txt because it contains
+  Tor-specific information, whereas the pt-spec.txt aims to be
+  system-independent.
+
+1. Tor PT interface overview
+
+  Pluggable Transports must implement a specific interface to be able to
+  harmoniously coordinate with Tor. This article attempts to document
+  this interface.
+
+  TODO: Make this section more useful (SOCKS, ExtORport, etc.)
+
+2. Specification
+
+2.0. Pluggable Transport names
+
+  Tor treats Pluggable Transport names as unique identifiers. Every PT
+  MUST have a unique name.
+
+  Furthermore, PT names MUST be C identifiers. That is, PT names MUST
+  begin with a letter or underscore and the rest of the characters be
+  letters, numbers or underscores. No length limit is imposed.
+
+  PT names MUST satisfy the regular expression "[a-zA-Z_][a-zA-Z0-9_]*".
+
+2.1. Tor Configuration
+
+2.1.0. Client Configuration
+
+  Users use the Tor configuration file (torrc) to specify if and how
+  Pluggable Transports should be used. Specifically, a user is expected
+  to use the Bridge and ClientTransportPlugin torrc lines to configure
+  their PTs.
+
+2.1.0.0. ClientTransportPlugin torrc lines
+
+  ClientTranportPlugin torrc lines are used by Tor to configure
+  Pluggable Transports. They specify the location of the PT executable,
+  and which PT protocols the executable is able to perform.
+
+  The standard format of a ClientTransportPlugin line is:
+
+     ClientTransportPlugin <transports> exec <path> [<options>]
+
+  where <transports> are the (comma-separated) names of the PTs that
+  this line specifies. <path> is a filesystem path pointing to an
+  executable that can "perform" this PT. <options> are (optional)
+  command-line arguments and switches that should be used when
+  invoking the executable.
+
+  For example:
+
+     ClientTransportPlugin obfs2,obfs3 exec /usr/bin/obfsproxy --managed
+
+  This line tells Tor to launch the executable "/usr/bin/obfsproxy" with
+  the command-line switch "--managed". That executable should be able to
+  perform two PTs: obfs2 and obfs3.
+
+  If two ClientTransportPlugin lines specify the same PT, Tor SHOULD use
+  whichever one is listed first.
+
+  TODO: Document external mode
+
+2.1.0.1. Bridge torrc lines
+
+  Bridge lines specify how Tor should connect to a bridge. The Bridge
+  line format is:
+
+     Bridge [<transport>] <address>:<port> [<id-fingerprint>] [<k>=<v>] [<k>=<v>] [<k>=<v>]
+
+  The PT-specific parts of this format are the [transport] and [k=v]
+  values.
+
+  <transport> is the name of the PT that MUST be used when connecting to
+  the bridge, and the <k>=<v> values are PT-specific parameters that
+  MUST be passed to the PT when connecting to the bridge (this MAY
+  include keys, passwords or other PT configuration options) as
+  specified in [CLIENTPARAMS].
+
+  Upon encountering such a Bridge line in the torrc, Tor iterates over
+  the ClientTransportPlugin lines and checks if there is a line that
+  specifies how <transport> is performed.
+
+  If a corresponding ClientTransportPlugin line is found, Tor is
+  expected to execute and enable that PT via the process specified in
+  [MANAGEDPROXY]. If no such line could be found, Tor SHOULD warn the
+  user that there is no way to perform that PT.
+
+  When a PT-supporting bridge needs to be used in a Tor circuit, Tor
+  uses the PT as a proxy as specified in 2.1.0.2.
+
+2.1.0.2. Connecting to a bridge via a client PT proxy
+
+  Consider a fictitious example of the torrc lines:
+
+    ClientTransportPlugin btc,ltc exec /usr/bin/btcproxy
+    Bridge btc 192.0.2.1:6612 tx_size=0.2
+
+  In this example, to connect to the bridge at 192.0.2.1:6612, Tor is
+  expected to use the PT "btc" via the PT proxy at /usr/bin/btcproxy.
+
+  Using the managed proxy protocol (specified in [MANAGEDPROXY]), the PT
+  proxy exposes a SOCKS proxy server and informs Tor of the address.
+  Tor connects to 192.0.2.1:6612 via the PT SOCKS proxy and routes
+  regular Tor traffic through the SOCKS connection. The PT proxy is
+  expected to transform the Tor traffic to and from the bridge.
+
+  Furthermore, as "tx_size=0.2" was specified as a PT-specific
+  parameter, Tor will pass that to the PT proxy via the method specified
+  in [CLIENTPARAMS].
+
+2.1.0.3. Passing PT-specific parameters to a client PT [CLIENTPARAMS]
+
+  If PT-specific parameters are specified in a Bridge line, Tor MUST
+  pass them to the PT proxy every time a connection is made to that
+  bridge.
+
+  To do so, the authentication mechanism of the SOCKS protocol is
+  (ab)used. Specifically, if any <k>=<v> values are specified in a
+  Bridge line, Tor should join them with semicolons and place them in
+  the user and password fields of the SOCKS handshake (splitting them
+  across the fields if needed). If a key or value contains a semicolon
+  or a backslash, it is escaped with a backslash.
+
+  For example:
+
+    Bridge trebuchet 192.0.2.1:6612 rocks=20 height=5.6m
+
+  when connecting to that bridge, Tor is expected to encode the PT
+  parameters in the SOCKS handshake as the following string:
+
+    rocks=20;height=5.6m
+
+2.1.1. Server (bridge) Configuration
+
+  Server-side PTs are configured similarly to client proxies. Bridge
+  operators use ServerTransportPlugin lines to configure their PTs.
+
+  If a server-side PT requires additional parameters, they need to be
+  specified using the ServerTransportOptions torrc parameter.
+
+  Also, instead of using the ORPort, server PTs SHOULD use the
+  Extended ORPort to pass data to Tor. The Extended ORPort protocol is
+  an ORPort enhanced with an additional metadata channel to carry
+  various metadata about client connections (which PT was used, what
+  was the actual IP of the client, etc.). The Extended ORPort is
+  specified in [EXTORPORT].
+
+2.1.1.0. ServerTransportPlugin lines
+
+  ServerTransportPlugin lines are used to tell Tor about pluggable
+  transports. They specify where a PT can be found if it needs to
+  provide service for a Tor bridge.
+
+  The standard format of a ServerTransportPlugin line is:
+
+     ServerTransportPlugin <transports> exec <path> [<options>]
+
+  with the same format as ClientTransportPlugin lines.That is,
+  <transports> are the (comma-separated) names of the PTs that this
+  line specifies. <path> is a filesystem path pointing to an
+  executable that can "perform" this PT. <options> are command-line
+  arguments and switches that should be used when calling the
+  executable.
+
+  Upon encountering a ServerTransportPlugin line, Tor needs to launch
+  and configure the corresponding PT using the managed proxy protocol
+  (as specified in [MANAGEDPROXY]).
+
+2.1.1.1. Passing PT-specific parameters to a server PT
+
+  Further configuration parameters (like the <k>=<v> values passed to
+  client PTs using Bridge lines) can be passed to server PTs using the
+  ServerTransportOptions option.
+
+  The format of the ServerTransportOptions line is:
+    ServerTransportOptions <transport> <k=v> ...
+
+  For example, a valid instance of this line would be:
+    ServerTransportOptions hieroglyphics locale=egypt
+  which would pass the parameter "locale=egypt" to the hieroglyphics PT.
+
+  In contrast to the client PT parameters, the server PT parameters
+  are valid for the whole runtime of the PT, instead of only being
+  used per-connection. They are passed to the PT proxy using the
+  managed proxy protocol (as specified in [MANAGEDPROXY]).
+
+2.1.1.2. Specify the bind address of a server PT
+
+  By default, server PTs will bind to IPADDR_ANY and to a random TCP
+  port the first time they get launched and will attempt to bind to
+  the same port in subsequent runs.
+
+  A bridge operator that wants to specify a different address or port
+  should use the ServerTransportListenAddr torrc line. The format of
+  such a line is:
+    ServerTransportListenAddr <transport> <address:port>
+
+  For example, some valid instances of this line would be:
+    ServerTransportListenAddr rot26 98.23.4.45:4200
+    ServerTransportListenAddr sound_pt [::]:1025
+
+2.2. Launching PT proxies (managed proxy protocol) [MANAGEDPROXY]
+
+  When Tor is instructed to enable a PT, it launches the executable
+  file specified in the ClientTransportPlugin line or the
+  ServerTransportPlugin line. This can be done using execve(2) or any
+  other process-spawning API.
+
+  After Tor has launched the PT, the PT must be configured to ensure
+  that the right transports will be used, that it will bind in the
+  proper address/port, etc.
+
+  To achieve this, Tor and the PT use the "managed proxy protocol". This
+  is a communication protocol where Tor speaks to the PT using
+  environment variables, and the PT replies by printing lines to its
+  stdout.
+
+2.2.0. Tor -> PT communication (environment variables)
+
+   When the Tor client or relay launches a managed proxy, it communicates
+   via environment variables. At a minimum, TOR MUST set the following
+   enviornment variables:
+
+    {Both client and server}
+
+      "TOR_PT_STATE_LOCATION" -- A filesystem directory path where the
+       PT is allowed to store permanent state if required. This
+       directory is not required to exist, but the proxy SHOULD be able
+       to create it if it does not. The proxy MUST NOT store state
+       elsewhere.
+      Example: TOR_PT_STATE_LOCATION=/var/lib/tor/pt_state/
+
+      "TOR_PT_MANAGED_TRANSPORT_VER" -- Used to tell the proxy which
+       versions of this configuration protocol Tor supports. Clients
+       MUST accept comma-separated lists containing any version that
+       they recognise, and MUST work correctly even if some of the
+       versions they do not recognise are non-numeric. Valid version
+       characters are non-space, non-comma printable ASCII characters.
+      Example: TOR_PT_MANAGED_TRANSPORT_VER=1,1a,2,4B
+
+    {Client only}
+
+      "TOR_PT_CLIENT_TRANSPORTS" -- A comma-separated list of the PTs
+       this client should enable. The proxy SHOULD ignore transport
+       names that it doesn't recognise.
+      Example: TOR_PT_CLIENT_TRANSPORTS=trebuchet,battering_ram,ballista
+
+      "TOR_PT_PROXY" -- This is the address of an outgoing proxy that
+       the pluggable transport proxy MUST use (see proposal 232 for more
+       details). It is of the format:
+           <proxy_type>://[<user_name>][:<password>][@]<ip>:<port>
+       The TOR_PT_PROXY is optional and MAY be omitted if there is no
+       need to connect via an outgoing proxy.
+      Example: socks5://tor:test1234@198.51.100.1:8000
+               socks4a://198.51.100.2:8001
+
+    {Server only}
+
+      "TOR_PT_EXTENDED_SERVER_PORT" -- An <address>:<port> where Tor
+       should be listening for connections speaking the extended
+       ORPort protocol (as specified in [EXTORPORT]). If Tor does not
+       support the extended ORPort protocol, it MUST use the empty
+       string as the value of this environment variable.
+      Example: TOR_PT_EXTENDED_SERVER_PORT=127.0.0.1:4200
+
+      "TOR_PT_ORPORT" -- The <address>:<port> of the ORPort of the
+       bridge where the PT is supposed to send the deobfuscated
+       traffic.
+      Example: TOR_PT_ORPORT=127.0.0.1:9001
+
+      "TOR_PT_SERVER_BINDADDR" -- A comma separated list of
+       <key>-<value> pairs, where <key> is a transport name and
+       <value> is the adress:port on which it should listen for client
+       proxy connections.
+       The keys holding transport names MUST be in the same order as
+       they are in TOR_PT_SERVER_TRANSPORTS. This might be the
+       advertised address, or might be a local address that Tor will
+       forward ports to. It MUST be an address that will work with
+       bind().
+      Example:
+        TOR_PT_SERVER_BINDADDR=trebuchet-127.0.0.1:1984,ballista-127.0.0.1:4891
+
+      "TOR_PT_SERVER_TRANSPORTS" -- A comma-separated list of server
+       transports that the proxy should support. The proxy SHOULD
+       ignore transport names that it doesn't recognise.
+      Example: TOR_PT_SERVER_TRANSPORTS=trebuchet,ballista
+
+      "TOR_PT_AUTH_COOKIE_FILE" -- A filesystem path where the proxy
+       should expect to find the authentication cookie to be able to
+       communicate with the Extended ORPort and TransportControlPort.
+       TOR_PT_AUTH_COOKIE_FILE is optional and might not be present in
+       the environment of the proxy.
+      Example: TOR_PT_AUTH_COOKIE_FILE=/var/lib/tor/extended_orport_auth_cookie
+
+      "TOR_PT_SERVER_TRANSPORT_OPTIONS" -- A semicolon-separated list
+       of <key>:<value> pairs, where <key> is a transport name and
+       <value> is a k=v string value with options that are to be passed
+       to the transport. Colons, semicolons, equal signs and backslashes
+       MUST be escaped with a backslash. TOR_PT_SERVER_TRANSPORT_OPTIONS
+       is optional and might not be present in the environment of the
+       proxy if no options are need to be passed to transports.
+       Example:
+         TOR_PT_SERVER_TRANSPORT_OPTIONS=scramblesuit:key=banana;automata:rule=110;automata:depth=3
+       will pass to 'scramblesuit' the parameter 'key=banana' and to
+       'automata' the arguments 'rule=110' and 'depth=3'.
+
+2.2.1. PT -> Tor communication (stdout)
+
+  The transport proxy replies by writing NL-terminated lines to
+  stdout. The line metaformat is:
+
+      <Line> ::= <Keyword> <OptArgs> <NL>
+      <Keyword> ::= <KeywordChar> | <Keyword> <KeywordChar>
+      <KeyWordChar> ::= <any US-ASCII alphanumeric, dash, and underscore>
+      <OptArgs> ::= <Args>*
+      <Args> ::= <SP> <ArgChar> | <Args> <ArgChar>
+      <ArgChar> ::= <any US-ASCII character but NUL or NL>
+      <SP> ::= <US-ASCII whitespace symbol (32)>
+      <NL> ::= <US-ASCII newline (line feed) character (10)>
+
+  Tor MUST ignore lines with keywords that it does not recognize.
+
+  If there is an error parsing the environment variables, the proxy
+  SHOULD write:
+    ENV-ERROR <errormessage>
+  and exit.
+
+  If the environment variables were correctly formatted, the proxy
+  should write:
+    VERSION <configuration protocol version>
+  to announce the supported configuration protocol version (eg:
+  "VERSION 1"). It MUST either pick a version among those listed in the
+  TOR_PT_MANAGED_TRANSPORT_VER enviornment variable. If no supported
+  versions are listed in the enviornment variable the proxy SHOULD
+  write:
+     VERSION-ERROR no-version
+  and exit.
+
+  The proxy should then open its ports. If running as a client
+  proxy, it SHOULD NOT use fixed ports; instead it SHOULD autoselect
+  ports to avoid conflicts. A client proxy SHOULD only listen on the
+  loopback interface for connections by default.
+
+  A PT should then tell which transports it has made available and how.
+  It does this by printing zero or more CMETHOD (client) or SMETHOD
+  (server) lines to its stdout.
+
+2.2.1.0. Client PT behaviour
+
+2.2.1.0.0. Client PT outgoing proxy (PROXY lines)
+
+  If the client PT is provided with a TOR_PT_PROXY environment variable,
+  it MUST make all outgoing network connections via the supplied proxy.
+  If it is unable to do so for any reason (eg: malformed value,
+  unsupported proxy type, unreachable proxy address), it MUST return a
+  `PROXY_ERROR` and terminate.
+
+  If the value of the TOR_PT_PROXY environment variable is a proxy URL
+  usable by the pluggable transport plugin (as specified by proposal
+  232-pluggable-transports-through-proxy.txt), the plugin writes to
+  stdout:
+     PROXY DONE
+  On failure it writes:
+     PROXY-ERROR <errormessage>
+
+2.2.1.0.1. Client PT configuration (CMETHOD lines)
+
+  Client PTs report their transports via zero or more CMETHOD lines,
+  with the following format:
+   CMETHOD <transport> socks4/socks5 <address:port>
+  For example:
+   CMETHOD trebuchet socks5 127.0.0.1:19999
+
+  The 'address:port' component of a CMETHOD line is the IP address and
+  TCP port of the SOCKS proxy server the client PT has exposed.
+
+  If the PT tries to supply a client method but can not for some
+  reason, it MUST write:
+    CMETHOD-ERROR <methodname> <errormessage>
+  For example:
+    CMETHOD-ERROR trebuchet no rocks available
+
+  After it is finished communicating all of the client methods it
+  provides, the proxy MUST print a single "CMETHODS DONE" line.  At this
+  point the managed proxy configuration is complete.
+
+2.2.1.1. Server PT behaviour (SMETHOD lines)
+
+  Server PTs report their transports via  zero or more SMETHOD lines,
+  with the following format:
+    SMETHOD <methodname> <address:port> [options]
+
+  The 'address:port' component of a SMETHOD line is the IP address and
+  port where the server PT is listening for incoming client connections.
+  The optional 'options' component is a list of space-separated K:V
+  flags that Tor should know about. Recognised options are:
+
+      - ARGS:K=V,K=V,K=V
+
+        If this option is set, the K=V arguments are added to Tor's
+        extrainfo document. Equal signs and commas must be escaped
+        with a backslash.
+
+  If the PT tries to supply a server method but can not for some
+  reason, it MUST write:
+    SMETHOD-ERROR <methodname> <errormessage>
+
+  After it is finished communicating all of the server methods it
+  provides, the PT should print a single "SMETHODS DONE" line.  At
+  this point the server PT configuration is complete.
+
+2.2.2. Managed proxy protocol behaviour
+
+  This section specifies some behaviours that Tor and PTs SHOULD abide
+  too while performing the managed proxy protocol:
+
+  SMETHOD and CMETHOD lines may be interspersed, to allow the proxies to
+  report methods as they become available, even when some methods may
+  require probing the network, connecting to external peers, etc before
+  they are set up.
+
+  The proxy SHOULD NOT tell Tor about a server or client method
+  unless it is actually open and ready to use.
+
+  Tor clients SHOULD NOT use any method from a client proxy or
+  advertise any method from a server proxy UNLESS it is listed as a
+  possible method for that proxy in torrc, and it is listed by the
+  proxy as a method it supports.
+
+  The managed proxy configuration protocol version defined in this
+  section is "1".
+  So, for example, if tor supports this configuration protocol it
+  should set the environment variable:
+    TOR_PT_MANAGED_TRANSPORT_VER=1
+
+2.3. Extended ORPort [EXTORPORT]
+
+  Server-side PTs SHOULD pass additional information about their clients
+  to Tor for statistics gathering. This is done using the Extended
+  ORPort protocol, which is a variant of the ORPort with an extra
+  metadata channel.
+
+  For example, PTs are expected to use the Extended ORPort metadata
+  channel to inform Tor about the PT used in each connection, so that
+  Tor can keep track on the number of connections per PT.
+
+  The Extended ORPort protocol is specified in proposal
+  196-transport-control-ports.txt.
+
+TODO: Managed proxy protocol test vectors
