@@ -1,0 +1,11 @@
+{
+    "role": "client",
+    "state": ".",
+    "local": "127.0.0.1:1080",
+    "server": "192.168.1.10:23456",
+    "ptexec": "obfs4proxy -logLevel=ERROR -enableLogging=true",
+    "ptname": "obfs4",
+    "ptargs": "cert=AAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;iat-mode=0",
+    "ptserveropt": "",
+    "ptproxy": ""
+}
