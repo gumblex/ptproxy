@@ -69,7 +69,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             for s in rl:
                 try:
                     data = s.recv(1024)
-                except ConnectionResetError:
+                except Exception as ex:
+                    print(ex)
                     continue
                 if data:
                     run += 1
