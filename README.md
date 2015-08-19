@@ -15,7 +15,7 @@ The JSON config file is explained in the head of `ptproxy.py`.
 
 ## Original Bash version: `ptproxy.sh`.
 
-__(Deprecated)__
+__Deprecated: `socat` doesn't have full SOCKS5 support at present.__
 
 ### Usage
 
@@ -29,7 +29,7 @@ Before executing the script, you need to first edit the variables listed in the 
 ### Dependencies
 
 * bash, awk
-* `socat` (client, 2.0+ for PT clients which use SOCKS5)
+* `socat` (client)
 * the Pluggable Transport you need
 
 ## Note
