@@ -132,7 +132,8 @@ def parseptline(iterable):
             if vals[0] == CFG['ptname']:
                 host, port = vals[2].split(':')
                 CFG['_ptcli'] = (
-                    socks.PROXY_TYPES[vals[1].upper()], host, int(port), True, CFG['ptargs'], '\0')
+                    socks.PROXY_TYPES[vals[1].upper()], host, int(port),
+                    True, CFG['ptargs'][:255], CFG['ptargs'][255:] or '\0')
         elif kw == 'SMETHOD':
             vals = sp[1].split(' ')
             if vals[0] == CFG['ptname']:
