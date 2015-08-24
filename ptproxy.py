@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 import json
 import shlex
 import select
@@ -44,6 +45,7 @@ CFG = {
 
 TRANSPORT_VERSIONS = ('1',)
 
+logtime = lambda: time.strftime('%Y-%m-%d %H:%M:%S')
 
 class PTConnectFailed(Exception):
     pass
@@ -70,7 +72,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 try:
                     data = s.recv(1024)
                 except Exception as ex:
-                    print(ex)
+                    print(logtime(), ex)
                     continue
                 if data:
                     run += 1
@@ -145,14 +147,14 @@ def parseptline(iterable):
                         print('"ptargs": "%s",' % opt[5:].replace(',', ';'))
                 print('==============================')
         elif kw in ('CMETHODS', 'SMETHODS') and sp[1] == 'DONE':
-            print('PT started successfully.')
+            print(logtime(), 'PT started successfully.')
             return
 
 
 def runpt():
     global CFG, PTREADY
     while CFG['_run']:
-        print('Starting PT...')
+        print(logtime(), 'Starting PT...')
         proc = checkproc()
         # If error then die
         parseptline(proc.stdout)
@@ -164,7 +166,7 @@ def runpt():
         except BrokenPipeError:
             pass
         PTREADY.clear()
-        print('PT died.')
+        print(logtime(), 'PT died.')
 
 
 try:
