@@ -45,6 +45,11 @@ CFG = {
 
 TRANSPORT_VERSIONS = ('1',)
 
+startupinfo = None
+if os.name == 'nt':
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
 logtime = lambda: time.strftime('%Y-%m-%d %H:%M:%S')
 
 class PTConnectFailed(Exception):
@@ -115,7 +120,7 @@ def checkproc():
     global PT_PROC
     if PT_PROC is None or PT_PROC.poll() is not None:
         PT_PROC = subprocess.Popen(shlex.split(
-            CFG['ptexec']), stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=ptenv())
+            CFG['ptexec']), stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=ptenv(), startupinfo=startupinfo)
     return PT_PROC
 
 
