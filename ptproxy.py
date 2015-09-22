@@ -13,6 +13,12 @@ import socketserver
 
 import socks
 
+try:
+    DEVNULL = subprocess.DEVNULL
+except AttributeError:
+    # Python 3.2
+    DEVNULL = open(os.devnull, 'wb')
+
 # Default config
 # If config file is not specified on the command line, this is used instead.
 
@@ -119,14 +125,15 @@ def checkproc():
     global PT_PROC
     if PT_PROC is None or PT_PROC.poll() is not None:
         PT_PROC = subprocess.Popen(shlex.split(
-            CFG['ptexec']), stdin=subprocess.PIPE, stdout=subprocess.PIPE, env=ptenv(), startupinfo=startupinfo)
+            CFG['ptexec']), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=DEVNULL, env=ptenv(), startupinfo=startupinfo)
     return PT_PROC
 
 
 def parseptline(iterable):
     global CFG
     for ln in iterable:
-        ln = ln.decode('utf_8').rstrip('\n')
+        ln = ln.decode('utf_8', errors='replace').rstrip('\n')
         sp = ln.split(' ', 1)
         kw = sp[0]
         if kw in ('ENV-ERROR', 'VERSION-ERROR', 'PROXY-ERROR',
@@ -158,6 +165,9 @@ def parseptline(iterable):
         elif kw in ('CMETHODS', 'SMETHODS') and sp[1] == 'DONE':
             print(logtime(), 'PT started successfully.')
             return
+        else:
+            # Some PTs may print extra debugging info
+            print(logtime(), ln)
 
 
 def runpt():
@@ -169,9 +179,11 @@ def runpt():
         parseptline(proc.stdout)
         PTREADY.set()
         # Use this to block
+        # stdout may be a channel for logging
         try:
-            while proc.stdout.readline():
-                pass
+            out = proc.stdout.readline()
+            while out:
+                print(logtime(), out.decode('utf_8', errors='replace').rstrip('\n'))
         except BrokenPipeError:
             pass
         PTREADY.clear()
