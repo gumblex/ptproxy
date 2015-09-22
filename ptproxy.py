@@ -65,13 +65,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         ptsock = socks.socksocket()
         ptsock.set_proxy(*CFG['_ptcli'])
-        host, port = CFG['server'].split(':')
+        host, port = CFG['server'].rsplit(':', 1)
         try:
             ptsock.connect((host, int(port)))
         except socks.GeneralProxyError as ex:
             print(logtime(), ex)
-            print(logtime(), 'WARNING: Please check the config.')
-            return
+            print(logtime(), 'WARNING: Please check the config and the log of PT.')
         run = 1
         while run:
             rl, wl, xl = select.select([self.request, ptsock], [], [], 300)

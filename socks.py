@@ -632,11 +632,12 @@ class socksocket(_BaseSocket):
 
         dest_pair - 2-tuple of (IP/hostname, port).
         """
-        if len(dest_pair) != 2 or dest_pair[0].startswith("["):
+        # It actually supports IPv6 without problem!
+        #if len(dest_pair) != 2 or dest_pair[0].startswith("["):
             # Probably IPv6, not supported -- raise an error, and hope
             # Happy Eyeballs (RFC6555) makes sure at least the IPv4
             # connection works...
-            raise socket.error("PySocks doesn't support IPv6")
+            #raise socket.error("PySocks doesn't support IPv6")
 
         dest_addr, dest_port = dest_pair
 
