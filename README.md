@@ -17,27 +17,27 @@ The JSON config file is explained below or in the head of `ptproxy.py`. It MUST 
 
 ```
 {
-    # Role: client|server
+    // Role: client|server
     "role": "server",
-    # Where to store PT state files
+    // Where to store PT state files
     "state": ".",
-    # For server, which address to forward
-    # For client, which address to listen
+    // For server, which address to forward
+    // For client, which address to listen
     "local": "127.0.0.1:1080",
-    # For server, which address to listen
-    # For client, the server address to connect
+    // For server, which address to listen
+    // For client, the server address to connect
     "server": "0.0.0.0:23456",
-    # The PT command line
+    // The PT command line
     "ptexec": "obfs4proxy -logLevel=ERROR -enableLogging=true",
-    # The PT name, must be only one
+    // The PT name, must be only one
     "ptname": "obfs4",
-    # [Client] PT arguments
+    // [Client] PT arguments
     "ptargs": "cert=AAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;iat-mode=0",
-    # [Optional][Server] PT options
-    # <key>=<value> [;<key>=<value> ...]
+    // [Optional][Server] PT options
+    // <key>=<value> [;<key>=<value> ...]
     "ptserveropt": "",
-    # [Optional][Client] Which outgoing proxy must PT use
-    # <proxy_type>://[<user_name>][:<password>][@]<ip>:<port>
+    // [Optional][Client] Which outgoing proxy must PT use
+    // <proxy_type>://[<user_name>][:<password>][@]<ip>:<port>
     "ptproxy": ""
 }
 ```
@@ -89,27 +89,27 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 ```
 {
-    # 指定工作模式: client|server 客户端或服务器
+    // 指定工作模式: client|server 客户端或服务器
     "role": "server",
-    # 传输插件状态文件储存位置
+    // 传输插件状态文件储存位置
     "state": ".",
-    # 对于服务器，指定要转发的地址
-    # 对于客户端，指定本地监听地址
+    // 对于服务器，指定要转发的地址
+    // 对于客户端，指定本地监听地址
     "local": "127.0.0.1:1080",
-    # 对于服务器，指定服务端监听地址
-    # 对于客户端，指定要连接的服务端地址
+    // 对于服务器，指定服务端监听地址
+    // 对于客户端，指定要连接的服务端地址
     "server": "0.0.0.0:23456",
-    # 传输插件的命令行
+    // 传输插件的命令行
     "ptexec": "obfs4proxy -logLevel=ERROR -enableLogging=true",
-    # 传输插件名称，只能有一个
+    // 传输插件名称，只能有一个
     "ptname": "obfs4",
-    # [客户端] 传输插件的参数
+    // [客户端] 传输插件的参数
     "ptargs": "cert=AAAAAAAAAAAAAAAAAAAAAAAAAAAAA+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;iat-mode=0",
-    # [可选][服务端] 传输插件的选项
-    # <键>=<值> [;<键>=<值> ...]
+    // [可选][服务端] 传输插件的选项
+    // <键>=<值> [;<键>=<值> ...]
     "ptserveropt": "",
-    # [可选][客户端] 传输插件前置代理
-    # <代理类型>://[<用户名>][:<密码>][@]<IP>:<端口>
+    // [可选][客户端] 传输插件前置代理
+    // <代理类型>://[<用户名>][:<密码>][@]<IP>:<端口>
     "ptproxy": ""
 }
 ```
