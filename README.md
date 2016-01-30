@@ -1,6 +1,6 @@
 # PTProxy
 
-Turn any pluggable transport for Tor into a obfuscating TCP proxy.
+Turn any pluggable transport for Tor into an obfuscating TCP tunnel.
 
 This script is compatible with PT protocol version 1 without Extended ORPort and is independent from Tor.
 
@@ -72,7 +72,7 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 # PTProxy
 
-将任何用于 Tor 的传输插件做成 TCP 混淆代理。
+将任何用于 Tor 的传输插件做成 TCP 混淆隧道。
 
 这个脚本兼容 Tor 传输插件协议版本 1，不支持 Extended ORPort。该脚本独立于 Tor。
 
