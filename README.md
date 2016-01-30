@@ -13,7 +13,7 @@ This script is compatible with PT protocol version 1 without Extended ORPort and
 
 `-c|-s` is for overriding the `role` in the config file.
 
-The JSON config file is explained below or in the head of `ptproxy.py`. It MUST NOT contain the comment lines.
+The JSON config file is explained below or in the head of `ptproxy.py`. It MUST NOT contain the comment lines. The file must be in UTF-8 encoding.
 
 ```
 {
@@ -85,7 +85,7 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 使用 `-c|-s` 参数可覆盖配置文件中 `role` 的值。
 
-以下是对 JSON 配置文件的解释（在 `ptproxy.py` 的头部也有）。配置文件中**不能**包含注释行。
+以下是对 JSON 配置文件的解释（在 `ptproxy.py` 的头部也有）。配置文件中**不能**包含注释行，必须使用 UTF-8 编码。
 
 ```
 {
@@ -116,7 +116,7 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 注意：服务端成功启动后，会输出 `ptargs` 参数。请复制粘贴该值到客户端配置文件。
 
-## 原始Bash版: `ptproxy.sh`.
+## 原始 Bash 版: `ptproxy.sh`.
 __已废弃: `socat` 目前对 SOCKS5 支持不完整。__
 
 ### 用法
@@ -138,4 +138,4 @@ __已废弃: `socat` 目前对 SOCKS5 支持不完整。__
 
 这个项目仅能作为 TCP 连接代理。如果你需要一个 HTTP/SOCKS 等代理，请先在服务器上安装相应的软件。
 
-该脚本提供的安全性或混淆程度完全依赖于你选用的传输插件，它只作为一层包装。该脚本“依样”提供，不做任何担保。
+该脚本提供的安全性或混淆程度完全依赖于你选用的传输插件，它只作为一层包装。该脚本“依样”提供，**不做任何担保**。

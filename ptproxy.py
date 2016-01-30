@@ -198,9 +198,9 @@ try:
             print('usage: python3 %s [-c|-s] [config.json]' % __file__)
             sys.exit(0)
         else:
-            CFG = json.load(open(sys.argv[1], 'r'))
+            CFG = json.load(open(sys.argv[1], 'r', encoding='utf-8'))
     elif len(sys.argv) == 3:
-        CFG = json.load(open(sys.argv[2], 'r'))
+        CFG = json.load(open(sys.argv[2], 'r', encoding='utf-8'))
         if sys.argv[1] == '-c':
             CFG['role'] = 'client'
         elif sys.argv[1] == '-s':
