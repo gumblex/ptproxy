@@ -31,11 +31,14 @@ import time
 import json
 import shlex
 import select
+import asyncio
 import threading
 import subprocess
 import socketserver
 
 import socks
+
+BUFSIZE = 1024
 
 try:
     DEVNULL = subprocess.DEVNULL
@@ -86,41 +89,36 @@ class PTConnectFailed(Exception):
     pass
 
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    allow_reuse_address = True
-
-
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-
-    def handle(self):
-        ptsock = socks.socksocket()
-        ptsock.set_proxy(*CFG['_ptcli'])
-        host, port = CFG['server'].rsplit(':', 1)
-        try:
-            ptsock.connect((host, int(port)))
-        except socks.GeneralProxyError as ex:
-            print(logtime(), ex)
-            print(logtime(), 'WARNING: Please check the config and the log of PT.')
-        run = 1
-        while run:
-            rl, wl, xl = select.select([self.request, ptsock], [], [], 300)
-            if not rl:
+@asyncio.coroutine
+def proxy_data(reader, writer):
+    try:
+        while 1:
+            buf = yield from reader.read(BUFSIZE)
+            if not buf:
                 break
-            run = 0
-            for s in rl:
-                try:
-                    data = s.recv(1024)
-                except Exception as ex:
-                    print(logtime(), ex)
-                    continue
-                if data:
-                    run += 1
-                else:
-                    continue
-                if s is self.request:
-                    ptsock.sendall(data)
-                elif s is ptsock:
-                    self.request.sendall(data)
+            writer.write(buf)
+            yield from writer.drain()
+        writer.close()
+    except Exception as ex:
+        print(logtime(), ex)
+
+
+def handle_client(client_reader, client_writer):
+    ptsock = socks.socksocket()
+    ptsock.set_proxy(*CFG['_ptcli'])
+    host, port = CFG['server'].rsplit(':', 1)
+    try:
+        # not using async
+        ptsock.connect((host, int(port)))
+    except socks.GeneralProxyError as ex:
+        print(logtime(), ex)
+        print(logtime(), 'WARNING: Please check the config and the log of PT.')
+        ptsock.close()
+        return
+    ptsock.setblocking(False)
+    remote_reader, remote_writer = yield from asyncio.open_connection(sock=ptsock)
+    asyncio.async(proxy_data(client_reader, remote_writer))
+    asyncio.async(proxy_data(remote_reader, client_writer))
 
 
 def ptenv():
@@ -237,6 +235,8 @@ except Exception as ex:
 PT_PROC = None
 PTREADY = threading.Event()
 
+#loop = None
+
 try:
     CFG['_run'] = True
     if CFG['role'] == 'client':
@@ -245,12 +245,18 @@ try:
         ptthr.start()
         PTREADY.wait()
         host, port = CFG['local'].split(':')
-        server = ThreadedTCPServer(
-            (host, int(port)), ThreadedTCPRequestHandler)
-        server.serve_forever()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            asyncio.start_server(handle_client, host=host, port=int(port)))
+        loop.run_forever()
     else:
         runpt()
+except KeyboardInterrupt:
+    pass
 finally:
     CFG['_run'] = False
     if PT_PROC:
         PT_PROC.kill()
+    # No long list of destroyed tasks
+    #if loop:
+        #loop.close()
