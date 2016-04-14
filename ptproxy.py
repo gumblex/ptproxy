@@ -33,6 +33,7 @@ import shlex
 import select
 import threading
 import subprocess
+import socket
 import socketserver
 
 import socks
@@ -238,6 +239,11 @@ PT_PROC = None
 PTREADY = threading.Event()
 
 try:
+    host, port = CFG['local'].split(':')
+    CFG['local'] = ':'.join((socket.gethostbyname(host), port))
+    host, port = CFG['server'].split(':')
+    CFG['server'] = ':'.join((socket.gethostbyname(host), port))
+
     CFG['_run'] = True
     if CFG['role'] == 'client':
         ptthr = threading.Thread(target=runpt)
