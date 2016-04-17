@@ -60,6 +60,7 @@ from errno import EOPNOTSUPP, EINVAL, EAGAIN
 from io import BytesIO
 from os import SEEK_CUR
 from collections import Callable
+from base64 import b64encode
 
 PROXY_TYPE_SOCKS4 = SOCKS4 = 1
 PROXY_TYPE_SOCKS5 = SOCKS5 = 2
@@ -528,7 +529,7 @@ class socksocket(_BaseSocket):
             file.write(b"\x03" + chr(len(host_bytes)).encode() + host_bytes)
         else:
             # Resolve locally
-            addresses = socket.getaddrinfo(host, port)
+            addresses = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM, socket.IPPROTO_TCP, socket.AI_ADDRCONFIG)
             # We can't really work out what IP is reachable, so just pick the
             # first.
             target_addr = addresses[0]
@@ -538,8 +539,8 @@ class socksocket(_BaseSocket):
             addr_bytes = socket.inet_pton(family, host)
             file.write(family_to_byte[family] + addr_bytes)
             host = socket.inet_ntop(family, addr_bytes)
-            file.write(struct.pack(">H", port))
-            return host, port
+        file.write(struct.pack(">H", port))
+        return host, port
 
     def _read_SOCKS5_address(self, file):
         atyp = self._readall(file, 1)
@@ -625,8 +626,17 @@ class socksocket(_BaseSocket):
         # If we need to resolve locally, we do this now
         addr = dest_addr if rdns else socket.gethostbyname(dest_addr)
 
-        self.sendall(b"CONNECT " + addr.encode('idna') + b":" + str(dest_port).encode() +
-                     b" HTTP/1.1\r\n" + b"Host: " + dest_addr.encode('idna') + b"\r\n\r\n")
+        http_headers = [
+            b"CONNECT " + addr.encode('idna') + b":" + str(dest_port).encode() + b" HTTP/1.1",
+            b"Host: " + dest_addr.encode('idna')
+        ]
+
+        if username and password:
+            http_headers.append(b"Proxy-Authorization: basic " + b64encode(username + b":" + password))
+
+        http_headers.append(b"\r\n")
+
+        self.sendall(b"\r\n".join(http_headers))
 
         # We just need the first line to check if the connection was successful
         fobj = self.makefile()
