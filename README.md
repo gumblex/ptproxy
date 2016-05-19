@@ -21,10 +21,10 @@ The JSON config file is explained below or in the head of `ptproxy.py`. It MUST 
     "role": "server",
     // Where to store PT state files
     "state": ".",
-    // For server, which address to forward
+    // For server, which address to forward (must be an IP)
     // For client, which address to listen
     "local": "127.0.0.1:1080",
-    // For server, which address to listen
+    // For server, which address to listen (must be an IP)
     // For client, the server address to connect
     "server": "0.0.0.0:23456",
     // The PT command line
