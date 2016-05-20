@@ -4,7 +4,7 @@
 '''
 PTProxy - Turn any pluggable transport for Tor into an obfuscating TCP tunnel.
 
-Copyright (c) 2015 Dingyuan Wang
+Copyright (c) 2015-2016 Dingyuan Wang
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,15 +36,7 @@ import threading
 import subprocess
 import socketserver
 
-import socks
-
-BUFSIZE = 1024
-
-try:
-    DEVNULL = subprocess.DEVNULL
-except AttributeError:
-    # Python 3.2
-    DEVNULL = open(os.devnull, 'wb')
+import aiosocks
 
 # Default config
 # If config file is not specified on the command line, this is used instead.
@@ -76,6 +68,8 @@ CFG = {
 
 # End
 
+BUFSIZE = 1024
+
 TRANSPORT_VERSIONS = ('1',)
 
 startupinfo = None
@@ -102,21 +96,28 @@ def proxy_data(reader, writer):
     except Exception as ex:
         print(logtime(), ex)
 
+@asyncio.coroutine
+def proxied_connection(dst, proxy_type=None, addr=None, port=None, rdns=True, username=None, password=None):
+    if proxy_type == 'SOCKS4':
+        socks4_addr = aiosocks.Socks4Addr(addr, port)
+        socks4_auth = aiosocks.Socks4Auth(username)
+        return aiosocks.open_connection(socks4_addr, socks4_auth, dst, remote_resolve=rdns)
+    elif proxy_type == 'SOCKS5':
+        socks5_addr = aiosocks.Socks5Addr(addr, port)
+        socks5_auth = aiosocks.Socks5Auth(username, password)
+        return aiosocks.open_connection(socks5_addr, socks5_auth, dst, remote_resolve=rdns)
+    else:
+        return asyncio.open_connection(*dst)
 
 def handle_client(client_reader, client_writer):
-    ptsock = socks.socksocket()
-    ptsock.set_proxy(*CFG['_ptcli'])
     host, port = CFG['server'].rsplit(':', 1)
     try:
-        # not using async
-        ptsock.connect((host, int(port)))
-    except socks.GeneralProxyError as ex:
+        remote_reader, remote_writer = yield from proxied_connection(
+            (host, int(port)), *CFG['_ptcli'])
+    except aiosocks.SocksError as ex:
         print(logtime(), ex)
         print(logtime(), 'WARNING: Please check the config and the log of PT.')
-        ptsock.close()
         return
-    ptsock.setblocking(False)
-    remote_reader, remote_writer = yield from asyncio.open_connection(sock=ptsock)
     asyncio.async(proxy_data(client_reader, remote_writer))
     asyncio.async(proxy_data(remote_reader, client_writer))
 
@@ -148,7 +149,7 @@ def checkproc():
     if PT_PROC is None or PT_PROC.poll() is not None:
         PT_PROC = subprocess.Popen(shlex.split(
             CFG['ptexec']), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=DEVNULL, env=ptenv(), startupinfo=startupinfo)
+            stderr=subprocess.DEVNULL, env=ptenv(), startupinfo=startupinfo)
     return PT_PROC
 
 
@@ -172,7 +173,7 @@ def parseptline(iterable):
             if vals[0] == CFG['ptname']:
                 host, port = vals[2].split(':')
                 CFG['_ptcli'] = (
-                    socks.PROXY_TYPES[vals[1].upper()], host, int(port),
+                    vals[1].upper(), host, int(port),
                     True, CFG['ptargs'][:255], CFG['ptargs'][255:] or '\0')
         elif kw == 'SMETHOD':
             vals = sp[1].split(' ')
