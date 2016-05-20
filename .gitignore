@@ -1,4 +1,4 @@
+__pycache__/
 old/
 *.log
-obfs4_*
-ptout.txt
+obfs4*

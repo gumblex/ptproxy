@@ -4,12 +4,14 @@ Turn any pluggable transport for Tor into an obfuscating TCP tunnel.
 
 This script is compatible with PT protocol version 1 without Extended ORPort and is independent from Tor.
 
-## Python version
+## Usage
 
 `python3 ptproxy.py [-c|-s] [config.json]`
 
-* No external programs needed.
-* [PySocks](https://github.com/Anorov/PySocks) is included for SOCKS4/5 communication with PTs.
+* **Async version**: Please make sure your Python version is >= 3.4
+* Install [aiosocks](https://github.com/nibrag/aiosocks/) first: `pip3 install aiosocks`
+
+This version has higher performance than the version using threads before.
 
 `-c|-s` is for overriding the `role` in the config file.
 
@@ -44,24 +46,6 @@ The JSON config file is explained below or in the head of `ptproxy.py`. It MUST 
 
 Note：When the server starts successfully, it will print out `ptargs`. Copy and paste this value to your client config file.
 
-## Original Bash version: `ptproxy.sh`.
-__Deprecated: `socat` doesn't have full SOCKS5 support at present.__
-
-### Usage
-
-`./ptproxy.sh {-c|-s} [server] [bind_ip] [bind_port] [pt_args]`
-
-* `-c` for client
-* `-s` for server
-
-Before executing the script, you need to first edit the variables listed in the script. Some can be overriden on the command line.
-
-### Dependencies
-
-* bash, awk
-* `socat` (client)
-* the Pluggable Transport you need
-
 ## Note
 
 This only operates as a TCP proxy. If you need a HTTP/SOCKS/etc. proxy, first install related softwares on the server.
@@ -76,12 +60,14 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 这个脚本兼容 Tor 传输插件协议版本 1，不支持 Extended ORPort。该脚本独立于 Tor。
 
-## Python 版
+## 用法
 
 `python3 ptproxy.py [-c|-s] [config.json]`
 
-* 不需要外部程序。
-* 已包含 [PySocks](https://github.com/Anorov/PySocks) 与传输插件通信。
+* **异步版本**: 请确保 Python 版本 >= 3.4
+* 请先安装 [aiosocks](https://github.com/nibrag/aiosocks/): `pip3 install aiosocks`
+
+该版本比之前使用线程的版本性能更高。
 
 使用 `-c|-s` 参数可覆盖配置文件中 `role` 的值。
 
@@ -115,24 +101,6 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 ```
 
 注意：服务端成功启动后，会输出 `ptargs` 参数。请复制粘贴该值到客户端配置文件。
-
-## 原始 Bash 版: `ptproxy.sh`.
-__已废弃: `socat` 目前对 SOCKS5 支持不完整。__
-
-### 用法
-
-`./ptproxy.sh {-c|-s} [server] [bind_ip] [bind_port] [pt_args]`
-
-* `-c` 客户端
-* `-s` 服务端
-
-在执行该脚本之前，你需要编辑脚本中列出的变量。一些变量可以用命令行参数覆盖。
-
-### 依赖
-
-* bash, awk
-* `socat` (客户端)
-* 你需要的传输插件
 
 ## 注意
 
