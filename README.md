@@ -10,8 +10,9 @@ This script is compatible with PT protocol version 1 without Extended ORPort and
 
 * **Async version**: Please make sure your Python version is >= 3.4
 * Install [aiosocks](https://github.com/nibrag/aiosocks/) first: `pip3 install aiosocks`
+* To be compatible with Python 3.2 or 3.3, `git checkout v1.0` to use the older version (implemented with threads)
 
-This version has higher performance than the version using threads before.
+This async version has higher performance than the version using threads before.
 
 `-c|-s` is for overriding the `role` in the config file.
 
@@ -66,8 +67,9 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 * **异步版本**: 请确保 Python 版本 >= 3.4
 * 请先安装 [aiosocks](https://github.com/nibrag/aiosocks/): `pip3 install aiosocks`
+* 如果要兼容 Python 3.2 或 3.3， `git checkout v1.0` 来使用旧版本（用线程实现）
 
-该版本比之前使用线程的版本性能更高。
+该异步版本比之前使用线程的版本性能更高。
 
 使用 `-c|-s` 参数可覆盖配置文件中 `role` 的值。
 
