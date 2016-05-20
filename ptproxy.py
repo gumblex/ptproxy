@@ -30,11 +30,9 @@ import sys
 import time
 import json
 import shlex
-import select
 import asyncio
 import threading
 import subprocess
-import socketserver
 
 import aiosocks
 
@@ -68,8 +66,6 @@ CFG = {
 
 # End
 
-BUFSIZE = 1024
-
 TRANSPORT_VERSIONS = ('1',)
 
 startupinfo = None
@@ -87,7 +83,7 @@ class PTConnectFailed(Exception):
 def proxy_data(reader, writer):
     try:
         while 1:
-            buf = yield from reader.read(BUFSIZE)
+            buf = yield from reader.read(4096)
             if not buf:
                 break
             writer.write(buf)
