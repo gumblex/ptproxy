@@ -10,13 +10,16 @@ This script is compatible with PT protocol version 1 without Extended ORPort and
 
 * **Async version**: Please make sure your Python version is >= 3.4
 * Install [aiosocks](https://github.com/nibrag/aiosocks/) first: `pip3 install aiosocks`
-* To be compatible with Python 3.2 or 3.3, `git checkout v1.0` to use the older version (implemented with threads)
+* (Optional) supports `uvloop`
 
-This async version has higher performance than the version using threads before.
+This async version has higher performance than the version using threads before. To be compatible with Python 3.2 or 3.3, `git checkout v1.0` to use the older version (implemented with threads)
 
 `-c|-s` is for overriding the `role` in the config file.
 
 The JSON config file is explained below or in the head of `ptproxy.py`. It MUST NOT contain the comment lines. The file must be in UTF-8 encoding.
+
+**Experimental feature**: built-in SOCKS5 server. In the server-side config, set
+`"local"` to `"socks5"` (or `"socks5 username password"`).
 
 ```
 {
@@ -24,7 +27,8 @@ The JSON config file is explained below or in the head of `ptproxy.py`. It MUST 
     "role": "server",
     // Where to store PT state files
     "state": ".",
-    // For server, which address to forward (must be an IP)
+    // For server, which address to forward
+    //   can be an IP or "socks5" for a built-in SOCKS5 proxy
     // For client, which address to listen
     "local": "127.0.0.1:1080",
     // For server, which address to listen (must be an IP)
@@ -67,13 +71,16 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 
 * **异步版本**: 请确保 Python 版本 >= 3.4
 * 请先安装 [aiosocks](https://github.com/nibrag/aiosocks/): `pip3 install aiosocks`
-* 如果要兼容 Python 3.2 或 3.3， `git checkout v1.0` 来使用旧版本（用线程实现）
+* （可选）支持 `uvloop`
 
-该异步版本比之前使用线程的版本性能更高。
+该异步版本比之前使用线程的版本性能更高。如果要兼容 Python 3.2 或 3.3， `git checkout v1.0` 来使用旧版本（用线程实现）
 
 使用 `-c|-s` 参数可覆盖配置文件中 `role` 的值。
 
 以下是对 JSON 配置文件的解释（在 `ptproxy.py` 的头部也有）。配置文件中**不能**包含注释行，必须使用 UTF-8 编码。
+
+**实验性功能**: 内置 SOCKS5 服务器。在服务端配置中，将
+`"local"` 设置为 `"socks5"` （或 `"socks5 username password"`）。
 
 ```
 {
@@ -82,6 +89,7 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
     // 传输插件状态文件储存位置
     "state": ".",
     // 对于服务器，指定要转发的地址
+    //   可以是 IP，或可以是 "socks5" 来打开内置 SOCKS5 代理
     // 对于客户端，指定本地监听地址
     "local": "127.0.0.1:1080",
     // 对于服务器，指定服务端监听地址

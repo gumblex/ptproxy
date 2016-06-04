@@ -36,6 +36,12 @@ import subprocess
 
 import aiosocks
 
+try:
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except ImportError:
+    pass
+
 # Default config
 # If config file is not specified on the command line, this is used instead.
 
@@ -246,6 +252,14 @@ try:
         loop.run_until_complete(
             asyncio.start_server(handle_client, host=host, port=int(port)))
         loop.run_forever()
+    elif CFG['local'].startswith('socks5'):
+        from socksserver import SOCKS5Server
+        sockssrv = SOCKS5Server('127.0.0.1', 0, *CFG['local'].split(' ')[1:])
+        CFG['local'] = '127.0.0.1:%d' % sockssrv.port
+        ptthr = threading.Thread(target=runpt)
+        ptthr.daemon = True
+        ptthr.start()
+        sockssrv.run_forever()
     else:
         runpt()
 except KeyboardInterrupt:
