@@ -197,7 +197,7 @@ def parseptline(iterable):
 
 def runpt():
     global CFG, PTREADY
-    while CFG['_run']:
+    while CFG.get('_run', True):
         print(logtime(), 'Starting PT...')
         proc = checkproc()
         # If error then die
@@ -214,60 +214,64 @@ def runpt():
         PTREADY.clear()
         print(logtime(), 'PT died.')
 
-
-try:
-    if len(sys.argv) == 1:
-        pass
-    elif len(sys.argv) == 2:
-        if sys.argv[1] in ('-h', '--help'):
-            print('usage: python3 %s [-c|-s] [config.json]' % __file__)
-            sys.exit(0)
-        else:
-            CFG = json.load(open(sys.argv[1], 'r', encoding='utf-8'))
-    elif len(sys.argv) == 3:
-        CFG = json.load(open(sys.argv[2], 'r', encoding='utf-8'))
-        if sys.argv[1] == '-c':
-            CFG['role'] = 'client'
-        elif sys.argv[1] == '-s':
-            CFG['role'] = 'server'
-except Exception as ex:
-    print(ex)
-    print('usage: python3 %s [-c|-s] [config.json]' % sys.argv[0])
-    sys.exit(1)
-
 PT_PROC = None
 PTREADY = threading.Event()
 
-#loop = None
+def main():
+    try:
+        if len(sys.argv) == 1:
+            pass
+        elif len(sys.argv) == 2:
+            if sys.argv[1] in ('-h', '--help'):
+                print('usage: python3 %s [-c|-s] [config.json]' % __file__)
+                return 0
+            else:
+                CFG = json.load(open(sys.argv[1], 'r', encoding='utf-8'))
+        elif len(sys.argv) == 3:
+            CFG = json.load(open(sys.argv[2], 'r', encoding='utf-8'))
+            if sys.argv[1] == '-c':
+                CFG['role'] = 'client'
+            elif sys.argv[1] == '-s':
+                CFG['role'] = 'server'
+    except Exception as ex:
+        print(ex)
+        print('usage: python3 %s [-c|-s] [config.json]' % sys.argv[0])
+        return 1
 
-try:
-    CFG['_run'] = True
-    if CFG['role'] == 'client':
-        ptthr = threading.Thread(target=runpt)
-        ptthr.daemon = True
-        ptthr.start()
-        PTREADY.wait()
-        host, port = CFG['local'].split(':')
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            asyncio.start_server(handle_client, host=host, port=int(port)))
-        loop.run_forever()
-    elif CFG['local'].startswith('socks5'):
-        from socksserver import SOCKS5Server
-        sockssrv = SOCKS5Server('127.0.0.1', 0, *CFG['local'].split(' ')[1:])
-        CFG['local'] = '127.0.0.1:%d' % sockssrv.port
-        ptthr = threading.Thread(target=runpt)
-        ptthr.daemon = True
-        ptthr.start()
-        sockssrv.run_forever()
-    else:
-        runpt()
-except KeyboardInterrupt:
-    pass
-finally:
-    CFG['_run'] = False
-    if PT_PROC:
-        PT_PROC.kill()
-    # No long list of destroyed tasks
-    #if loop:
-        #loop.close()
+    #loop = None
+
+    try:
+        CFG['_run'] = True
+        if CFG['role'] == 'client':
+            ptthr = threading.Thread(target=runpt)
+            ptthr.daemon = True
+            ptthr.start()
+            PTREADY.wait()
+            host, port = CFG['local'].split(':')
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(
+                asyncio.start_server(handle_client, host=host, port=int(port)))
+            loop.run_forever()
+        elif CFG['local'].startswith('socks5'):
+            from socksserver import SOCKS5Server
+            sockssrv = SOCKS5Server('127.0.0.1', 0, *CFG['local'].split(' ')[1:])
+            CFG['local'] = '127.0.0.1:%d' % sockssrv.port
+            ptthr = threading.Thread(target=runpt)
+            ptthr.daemon = True
+            ptthr.start()
+            sockssrv.run_forever()
+        else:
+            runpt()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        CFG['_run'] = False
+        if PT_PROC:
+            PT_PROC.kill()
+        # No long list of destroyed tasks
+        #if loop:
+            #loop.close()
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())

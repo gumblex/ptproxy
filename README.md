@@ -4,6 +4,10 @@ Turn any pluggable transport for Tor into an obfuscating TCP tunnel.
 
 This script is compatible with PT protocol version 1 without Extended ORPort and is independent from Tor.
 
+    Client --> PTProxy -(SOCKS5)-> pt-client --.
+                                               |
+    Server <-- pt-server(managed by PTProxy) <-'
+
 ## Usage
 
 `python3 ptproxy.py [-c|-s] [config.json]`
@@ -64,6 +68,10 @@ The security or obfuscation provided fully depends on the Pluggable Transport yo
 将任何用于 Tor 的传输插件做成 TCP 混淆隧道。
 
 这个脚本兼容 Tor 传输插件协议版本 1，不支持 Extended ORPort。该脚本独立于 Tor。
+
+    Client --> PTProxy -(SOCKS5)-> pt-client --.
+                                               |
+    Server <-- pt-server(managed by PTProxy) <-'
 
 ## 用法
 

@@ -61,7 +61,11 @@ class SOCKS5Server:
             writer.close()
             return
 
-        version, command, reserved, addrtype = yield from reader.read(4)
+        try:
+            version, command, reserved, addrtype = yield from reader.read(4)
+        except ValueError:
+            writer.close()
+            return
         if version != 0x05:
             writer.close()
             return
@@ -98,6 +102,10 @@ class SOCKS5Server:
     def run_forever(self):
         self.loop.run_forever()
 
+    def close(self):
+        self.server.close()
+        self.loop.run_until_complete(self.server.wait_closed())
+
 if __name__ == '__main__':
     try:
         host = '0.0.0.0'
@@ -124,3 +132,5 @@ if __name__ == '__main__':
         srv.run_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        srv.close()
