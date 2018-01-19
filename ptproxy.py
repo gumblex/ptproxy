@@ -218,6 +218,7 @@ PT_PROC = None
 PTREADY = threading.Event()
 
 def main():
+    global CFG, PTREADY, PT_PROC
     try:
         if len(sys.argv) == 1:
             pass
