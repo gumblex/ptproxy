@@ -120,9 +120,8 @@ def handle_client(client_reader, client_writer):
         print(logtime(), ex)
         print(logtime(), 'WARNING: Please check the config and the log of PT.')
         return
-    asyncio.async(proxy_data(client_reader, remote_writer))
-    asyncio.async(proxy_data(remote_reader, client_writer))
-
+    asyncio.ensure_future(proxy_data(client_reader, remote_writer))
+    asyncio.ensure_future(proxy_data(remote_reader, client_writer))
 
 def ptenv():
     env = os.environ.copy()
