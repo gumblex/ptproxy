@@ -96,8 +96,8 @@ class SOCKS5Server:
             return
 
         r_reader, r_writer = yield from asyncio.open_connection(hostname, port)
-        asyncio.async(proxy_data(reader, r_writer), loop=self.loop)
-        asyncio.async(proxy_data(r_reader, writer), loop=self.loop)
+        asyncio.ensure_future(proxy_data(reader, r_writer), loop=self.loop)
+        asyncio.ensure_future(proxy_data(r_reader, writer), loop=self.loop)
 
     def run_forever(self):
         self.loop.run_forever()
