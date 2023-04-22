@@ -85,44 +85,41 @@ class PTConnectFailed(Exception):
     pass
 
 
-@asyncio.coroutine
-def proxy_data(reader, writer):
+async def proxy_data(reader, writer):
     try:
         while 1:
-            buf = yield from reader.read(4096)
+            buf = await reader.read(4096)
             if not buf:
                 break
             writer.write(buf)
-            yield from writer.drain()
+            await writer.drain()
         writer.close()
     except Exception as ex:
         print(logtime(), ex)
 
-@asyncio.coroutine
-def proxied_connection(dst, proxy_type=None, addr=None, port=None, rdns=True, username=None, password=None):
+async def proxied_connection(dst, proxy_type=None, addr=None, port=None, rdns=True, username=None, password=None):
     if proxy_type == 'SOCKS4':
         socks4_addr = aiosocks.Socks4Addr(addr, port)
         socks4_auth = aiosocks.Socks4Auth(username)
-        return aiosocks.open_connection(socks4_addr, socks4_auth, dst, remote_resolve=rdns)
+        return await aiosocks.open_connection(socks4_addr, socks4_auth, dst, remote_resolve=rdns)
     elif proxy_type == 'SOCKS5':
         socks5_addr = aiosocks.Socks5Addr(addr, port)
         socks5_auth = aiosocks.Socks5Auth(username, password)
-        return aiosocks.open_connection(socks5_addr, socks5_auth, dst, remote_resolve=rdns)
+        return await aiosocks.open_connection(socks5_addr, socks5_auth, dst, remote_resolve=rdns)
     else:
-        return asyncio.open_connection(*dst)
+        return await asyncio.open_connection(*dst)
 
-def handle_client(client_reader, client_writer):
+async def handle_client(client_reader, client_writer):
     host, port = CFG['server'].rsplit(':', 1)
     try:
-        remote_reader, remote_writer = yield from proxied_connection(
+        remote_reader, remote_writer = await proxied_connection(
             (host, int(port)), *CFG['_ptcli'])
     except aiosocks.SocksError as ex:
         print(logtime(), ex)
         print(logtime(), 'WARNING: Please check the config and the log of PT.')
         return
-    asyncio.async(proxy_data(client_reader, remote_writer))
-    asyncio.async(proxy_data(remote_reader, client_writer))
-
+    asyncio.ensure_future(proxy_data(client_reader, remote_writer))
+    asyncio.ensure_future(proxy_data(remote_reader, client_writer))
 
 def ptenv():
     env = os.environ.copy()
